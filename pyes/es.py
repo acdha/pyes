@@ -690,12 +690,22 @@ class ES(object):
         data = self.get(index, doc_type, id)
         return data["_source"]['_name'], base64.standard_b64decode(data["_source"]['content'])
 
-    def delete(self, index, doc_type, id):
+    def delete(self, index, doc_type, id, bulk=True):
         """
         Delete a typed JSON document from a specific index based on its id.
         """
-        path = self._make_path([index, doc_type, id])
-        return self._send_request('DELETE', path)
+
+        if bulk:
+            cmd = { "delete" : { "_index" : index, "_type" : doc_type,
+                                "_id": id}}
+            self.bulk_data.write(json.dumps(cmd, cls=self.encoder))
+            self.bulk_data.write("\n")
+            self.bulk_items += 1
+            self.flush_bulk()
+            return
+        else:
+            path = self._make_path([index, doc_type, id])
+            return self._send_request('DELETE', path)
 
     def delete_mapping(self, index, doc_type):
         """
